@@ -1,0 +1,78 @@
+const axios = require('axios').default
+const hasInternet = () => axios.head('https://www.google.com').then(() => true).catch(() => false)
+const port = process.env.PORT || 5067
+const tempPath = path.join(os.tmpdir(), 'httptoolkit-injected')
+console.log(`[Patcher] Selected temp path: ${tempPath}`)
+process.env.APP_URL = `http://localhost:${port}`
+const express = require('express')
+const app = express()
+
+app.all('*', async (req, res) => {
+  console.log(`[Patcher] Request to: ${req.url}`)
+  if (new URL(req.url, process.env.APP_URL).pathname === '/ui-update-worker.js') return res.status(404).send('Not found')
+  let filePath = path.join(tempPath, new URL(req.url, process.env.APP_URL).pathname === '/' ? 'index.html' : new URL(req.url, process.env.APP_URL).pathname)
+  if (['/view', '/intercept', '/settings', '/mock'].includes(new URL(req.url, process.env.APP_URL).pathname)) {
+    filePath += '.html'
+  }
+  if (!require('fs').existsSync(tempPath)) {
+    console.log(`[Patcher] Temp path not found, creating: ${tempPath}`)
+    require('fs').mkdirSync(tempPath)
+  }
+  if (!(await hasInternet())) {
+    console.log(`[Patcher] No internet connection, trying to serve directly from temp path`)
+    if (require('fs').existsSync(filePath)) {
+      console.log(`[Patcher] Serving from temp path: ${filePath}`)
+      res.sendFile(filePath)
+    } else {
+      console.log(`[Patcher] File not found in temp path: ${filePath}`)
+      res.status(404).send('Not found')
+    }
+    return
+  }
+  try {
+    const hasOld = require('fs').existsSync(filePath)
+    if (hasOld) {
+      const remoteDate = await axios.head(`https://app.httptoolkit.tech${req.url}`).then(res => new Date(res.headers['last-modified']))
+      if (remoteDate < new Date(require('fs').statSync(filePath).mtime)) {
+        console.log(`[Patcher] File not changed, serving from temp path`)
+        res.sendFile(filePath)
+        return
+      }
+    } else
+    console.log(`[Patcher] File not found in temp path, downloading`)
+    const remoteFile = await axios.get(`https://app.httptoolkit.tech${req.url}`, { responseType: 'arraybuffer' })
+    const recursiveMkdir = dir => {
+      if (!require('fs').existsSync(dir)) {
+        recursiveMkdir(path.dirname(dir))
+        require('fs').mkdirSync(dir)
+      }
+    }
+    recursiveMkdir(path.dirname(filePath))
+    let data = remoteFile.data
+    if (new URL(req.url, process.env.APP_URL).pathname === '/main.js') {
+      console.log(`[Patcher] Patching main.js`)
+      data = data.toString('utf-8')
+      let patched = data
+        .replace('class Ql{', 'Object.defineProperty(Gl,"getLatestUserData",{value:()=>user});Object.defineProperty(Gl,"getLastUserData",{value:()=>user});class Ql{')
+      if (patched === data) console.error(`[Patcher] Patch failed`)
+      patched = `const user=${JSON.stringify({
+        email,
+        subscription: {
+          status: 'active',
+          expiry: new Date('9999-12-31').toISOString(),
+          plan: 'pro-annual',
+        }
+      })};user.subscription.expiry=new Date(user.subscription.expiry);` + patched
+      data = patched
+      console.log(`[Patcher] main.js patched`)
+    }
+    require('fs').writeFileSync(filePath, data)
+    console.log(`[Patcher] File downloaded and saved: ${filePath}`)
+    res.sendFile(filePath)
+  } catch (e) {
+    console.error(`[Patcher] Error while fetching file: ${filePath}`, e)
+    res.status(500).send('Internal server error')
+  }
+})
+
+app.listen(port, () => console.log(`[Patcher] Server listening on port ${port}`))
