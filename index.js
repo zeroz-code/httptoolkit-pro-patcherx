@@ -6,6 +6,7 @@ import path from 'path'
 import yargs from 'yargs'
 import chalk from 'chalk'
 import fs from 'fs'
+import os from 'os'
 
 const argv = await yargs(process.argv.slice(2))
   .usage('Usage: node . <command> [options]')
@@ -109,7 +110,8 @@ switch (argv._[0]) {
     patchServer()
     break
   case 'restore':
-    console.log(chalk.blueBright`[+] Restoring server...`)
+    try {
+      console.log(chalk.blueBright`[+] Restoring server...`)
     if (!fs.existsSync(path.join(serverPath, 'bundle', 'index.js.bak')))
       console.error(chalk.redBright`[-] Server not patched or restore file not found`)
     else {
@@ -122,6 +124,11 @@ switch (argv._[0]) {
     else {
       fs.copyFileSync(path.join(appPath, 'resources', 'app.asar.bak'), path.join(appPath, 'resources', 'app.asar'))
       console.log(chalk.greenBright`[+] App restored`)
+    }
+    fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-injected'), { recursive: true, force: true })
+    } catch (e) {
+      console.error(chalk.redBright`[-] An error occurred`, e)
+      process.exit(1)
     }
     break
   case 'start':

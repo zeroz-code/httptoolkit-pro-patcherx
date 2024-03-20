@@ -1,5 +1,5 @@
 {
-  "name": "http-toolkit-pro-patcher",
+  "name": "httptoolkit-pro-patcher",
   "version": "1.0.0",
   "description": "Basic program that patches pro version to HTTP Toolkit",
   "main": "index.js",
