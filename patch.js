@@ -1,7 +1,7 @@
 const axios = require('axios').default
 const hasInternet = () => axios.head('https://www.google.com').then(() => true).catch(() => false)
 const port = process.env.PORT || 5067
-const tempPath = path.join(os.tmpdir(), 'httptoolkit-injected')
+const tempPath = path.join(os.tmpdir(), 'httptoolkit-patch')
 console.log(`[Patcher] Selected temp path: ${tempPath}`)
 process.env.APP_URL = `http://localhost:${port}`
 const express = require('express')
@@ -52,19 +52,27 @@ app.all('*', async (req, res) => {
     if (new URL(req.url, process.env.APP_URL).pathname === '/main.js') {
       console.log(`[Patcher] Patching main.js`)
       data = data.toString('utf-8')
-      let patched = data
-        .replace('class Ql{', 'Object.defineProperty(Gl,"getLatestUserData",{value:()=>user});Object.defineProperty(Gl,"getLastUserData",{value:()=>user});class Ql{')
-      if (patched === data) console.error(`[Patcher] Patch failed`)
-      patched = `const user=${JSON.stringify({
-        email,
-        subscription: {
-          status: 'active',
-          expiry: new Date('9999-12-31').toISOString(),
-          plan: 'pro-annual',
+      const accStoreName = data.match(/class ([0-9A-Za-z_]+){constructor\(e\){this\.goToSettings=e/)?.[1]
+      const modName = data.match(/([0-9A-Za-z_]+).(getLatestUserData|getLastUserData)/)?.[1]
+      if (!accStoreName) console.error(`[Patcher] [ERR] Account store name not found in main.js`)
+      else if (!modName) console.error(`[Patcher] [ERR] Module name not found in main.js`)
+      else {
+        let patched = data
+          .replace(`class ${accStoreName}{`, `["getLatestUserData","getLastUserData"].forEach(p=>Object.defineProperty(${modName},p,{value:()=>user}));class ${accStoreName}{`)
+        if (patched === data) console.error(`[Patcher] [ERR] Patch failed`)
+        else {
+          patched = `const user=${JSON.stringify({
+            email,
+            subscription: {
+              status: 'active',
+              expiry: new Date('9999-12-31').toISOString(),
+              plan: 'pro-annual',
+            }
+          })};user.subscription.expiry=new Date(user.subscription.expiry);` + patched
+          data = patched
+          console.log(`[Patcher] main.js patched`)
         }
-      })};user.subscription.expiry=new Date(user.subscription.expiry);` + patched
-      data = patched
-      console.log(`[Patcher] main.js patched`)
+      }
     }
     require('fs').writeFileSync(filePath, data)
     console.log(`[Patcher] File downloaded and saved: ${filePath}`)

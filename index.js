@@ -67,7 +67,7 @@ const patchApp = async () => {
   const filePath = path.join(appPath, 'resources', 'app.asar')
   const tempPath = path.join(appPath, 'resources', 'app')
   
-  if (fs.readFileSync(filePath).includes('Injected by HTTP Toolkit Injector')) {
+  if (fs.readFileSync(filePath).includes('Injected by HTTP Toolkit Patcher')) {
     console.log(chalk.greenBright`[+] App already patched`)
     return
   }
@@ -87,7 +87,7 @@ const patchApp = async () => {
   })
   const patch = fs.readFileSync('patch.js', 'utf-8')
   const patchedData = data
-    .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Injector -------\nconst email = \`${email.replaceAll('`', '\\`')}\`\n${patch}\n// ------- End injected content -------\nconst APP_URL =`)
+    .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Patcher -------\nconst email = \`${email.replaceAll('`', '\\`')}\`\n${patch}\n// ------- End patched content -------\nconst APP_URL =`)
 
   if (data === patchedData || !patchedData) {
     console.error(chalk.redBright`[-] Patch failed`)
@@ -125,7 +125,7 @@ switch (argv._[0]) {
       fs.copyFileSync(path.join(appPath, 'resources', 'app.asar.bak'), path.join(appPath, 'resources', 'app.asar'))
       console.log(chalk.greenBright`[+] App restored`)
     }
-    fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-injected'), { recursive: true, force: true })
+    fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-patch'), { recursive: true, force: true })
     } catch (e) {
       console.error(chalk.redBright`[-] An error occurred`, e)
       process.exit(1)
