@@ -17,15 +17,17 @@ const argv = await yargs(process.argv.slice(2))
   .alias('h', 'help')
   .parse()
 
-const appPath = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'httptoolkit')
+const appPath = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'Programs', 'httptoolkit') : path.join('/opt', 'httptoolkit')
 const serverPath = (() => {
-  let svPath = path.join(process.env.LOCALAPPDATA || '', 'httptoolkit-server', 'client')
+  let svPath = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'httptoolkit-server', 'client') : path.join('/opt', 'httptoolkit-server', 'client')
   if (fs.existsSync(svPath)) {
     const versions = fs.readdirSync(svPath)
     return path.join(svPath, versions[0])
   }
   return path.join(appPath, 'resources', 'httptoolkit-server')
 })()
+
+const isSudo = process.platform === 'linux' && (process.getuid || (() => process.env.SUDO_UID ? 0 : null))() === 0
 
 if (!fs.existsSync(path.join(appPath, 'resources', 'app.asar'))) {
   console.error(chalk.redBright`[-] HTTP Toolkit not found`)
@@ -74,8 +76,15 @@ const patchApp = async () => {
 
   console.log(chalk.blueBright`[+] Patching app...`)
 
-  if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { recursive: true, force: true })
-  asar.extractAll(filePath, tempPath)
+  try {
+    if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { recursive: true, force: true })
+    asar.extractAll(filePath, tempPath)
+  } catch (e) {
+    if (!isSudo && e.errno === -13) { //? Permission denied
+      console.error(chalk.redBright`[-] Permission denied, try running with sudo`)
+      process.exit(1)
+    }
+  }
 
   const indexPath = path.join(tempPath, 'build', 'index.js')
   const data = fs.readFileSync(indexPath, 'utf-8')
@@ -112,28 +121,38 @@ switch (argv._[0]) {
   case 'restore':
     try {
       console.log(chalk.blueBright`[+] Restoring server...`)
-    if (!fs.existsSync(path.join(serverPath, 'bundle', 'index.js.bak')))
-      console.error(chalk.redBright`[-] Server not patched or restore file not found`)
-    else {
-      fs.copyFileSync(path.join(serverPath, 'bundle', 'index.js.bak'), path.join(serverPath, 'bundle', 'index.js'))
-      console.log(chalk.greenBright`[+] Server restored`)
-    }
-    console.log(chalk.blueBright`[+] Restoring app...`)
-    if (!fs.existsSync(path.join(appPath, 'resources', 'app.asar.bak')))
-      console.error(chalk.redBright`[-] App not patched or restore file not found`)
-    else {
-      fs.copyFileSync(path.join(appPath, 'resources', 'app.asar.bak'), path.join(appPath, 'resources', 'app.asar'))
-      console.log(chalk.greenBright`[+] App restored`)
-    }
-    fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-patch'), { recursive: true, force: true })
+      if (!fs.existsSync(path.join(serverPath, 'bundle', 'index.js.bak')))
+        console.error(chalk.redBright`[-] Server not patched or restore file not found`)
+      else {
+        fs.copyFileSync(path.join(serverPath, 'bundle', 'index.js.bak'), path.join(serverPath, 'bundle', 'index.js'))
+        console.log(chalk.greenBright`[+] Server restored`)
+      }
+      console.log(chalk.blueBright`[+] Restoring app...`)
+      if (!fs.existsSync(path.join(appPath, 'resources', 'app.asar.bak')))
+        console.error(chalk.redBright`[-] App not patched or restore file not found`)
+      else {
+        fs.copyFileSync(path.join(appPath, 'resources', 'app.asar.bak'), path.join(appPath, 'resources', 'app.asar'))
+        console.log(chalk.greenBright`[+] App restored`)
+      }
+      fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-patch'), { recursive: true, force: true })
     } catch (e) {
+      if (!isSudo && e.errno === -13) { //? Permission denied
+        console.error(chalk.redBright`[-] Permission denied, try running with sudo`)
+        process.exit(1)
+      }
       console.error(chalk.redBright`[-] An error occurred`, e)
       process.exit(1)
     }
     break
   case 'start':
     console.log(chalk.blueBright`[+] Starting HTTP Toolkit...`)
-    execSync(`start "" "${path.join(appPath, 'HTTP Toolkit.exe')}"`, { stdio: 'ignore' })
+    try {
+      execSync(process.platform === 'win32' ? `start "" "${path.join(appPath, 'HTTP Toolkit.exe')}"` : 'httptoolkit', { stdio: 'inherit' })
+    } catch (e) {
+      console.error(chalk.redBright`[-] An error occurred`, e)
+      if (isSudo) console.error(chalk.redBright`[-] Try running without sudo`)
+      process.exit(1)
+    }
     break
   default:
     console.error(chalk.redBright`[-] Unknown command`)
