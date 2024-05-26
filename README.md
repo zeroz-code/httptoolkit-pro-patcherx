@@ -17,11 +17,11 @@ That's it! The app should now have the Pro features enabled.
 
 ## How it works
 
-This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy to intercept and download HTTP Toolkit app files ([app.httptoolkit.tech](https://app.httptoolkit.tech)) and patches the `main.js` file to enable the Pro features. For more information, see the [patch's source code](patch.js) or the [original patcher](index.js).
+This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy to intercept and download HTTP Toolkit app files ([app.httptoolkit.tech](https://app.httptoolkit.tech)) and patches the `main.js` file to enable the Pro features. For more information, see the [patch's source code](patch.js) or the [patcher](index.js) file.
 
 ***Tip**: You can also change the `PORT` environment variable to use a different port. For example, `PORT=8080 httptoolkit` or `PORT=8080 node . start`.*
 
-**Note**: This tool does not modify the original app files (except for server file to allow any origin). It only intercepts and modifies the files in memory (and saves the modified files to cache).
+**Note**: This tool does not modify the original app files. It only intercepts and modifies the files in memory (and saves the modified files to cache).
 
 ## Requirements
 
@@ -31,10 +31,10 @@ This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy
 
 - **Windows**: ✔
 - **Linux**: ✔
+- **macOS**: ✔
 
 ## Known Issues
 
-- **macOS**: Not supported yet (i don't have a mac to test it)
 - **Linux**: Try using `sudo` if you get permission errors
 
 ## Screenshot
@@ -52,5 +52,5 @@ This project is for educational purposes only. I do not condone piracy or any il
 ## Credits
 
 - [HTTP Toolkit](https://httptoolkit.tech) for the awesome app
-- [Titoot](https://github.com/Titoot) for the creating the [original patcher](https://github.com/Titoot/httptoolkit-interceptor)
+- [Titoot](https://github.com/Titoot) for the creating the [httptoolkit-interceptor](https://github.com/Titoot/httptoolkit-interceptor)
 - [XielQ](https://github.com/XielQs) for the creator of this patcher
