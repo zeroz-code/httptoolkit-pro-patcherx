@@ -9,7 +9,7 @@ import fs from 'fs'
 import os from 'os'
 
 const argv = await yargs(process.argv.slice(2))
-  .usage('Usage: node . <command> [options]')
+  .usage(`Usage: ${process.argv0} . <command> [options]`)
   .command('patch', 'Patch HTTP Toolkit using the specified script')
   .command('restore', 'Restore HTTP Toolkit files to their original state')
   .command('start', 'Start HTTP Toolkit')
@@ -17,15 +17,7 @@ const argv = await yargs(process.argv.slice(2))
   .alias('h', 'help')
   .parse()
 
-const appPath = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'Programs', 'httptoolkit') : path.join('/opt', 'httptoolkit')
-const serverPath = (() => {
-  let svPath = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'httptoolkit-server', 'client') : path.join('/opt', 'httptoolkit-server', 'client')
-  if (fs.existsSync(svPath)) {
-    const versions = fs.readdirSync(svPath)
-    return path.join(svPath, versions[0])
-  }
-  return path.join(appPath, 'resources', 'httptoolkit-server')
-})()
+const appPath = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || '', 'Programs', 'httptoolkit') : path.join('/opt', 'HTTP Toolkit')
 
 const isSudo = process.platform === 'linux' && (process.getuid || (() => process.env.SUDO_UID ? 0 : null))() === 0
 
@@ -34,36 +26,7 @@ if (!fs.existsSync(path.join(appPath, 'resources', 'app.asar'))) {
   process.exit(1)
 }
 
-if (!fs.existsSync(path.join(serverPath, 'bundle', 'index.js'))) {
-  console.error(chalk.redBright`[-] HTTP Toolkit Server not found`)
-  process.exit(1)
-}
-
 console.log(chalk.blueBright`[+] HTTP Toolkit found at {bold ${appPath}}`)
-console.log(chalk.blueBright`[+] HTTP Toolkit Server found at {bold ${serverPath}}`)
-
-const patchServer = () => {
-  const filePath = path.join(serverPath, 'bundle', 'index.js')
-  const data = fs.readFileSync(filePath, 'utf-8')
-  
-  if (data.includes('ALLOWED_ORIGINS=false')) {
-    console.log(chalk.greenBright`[+] Server already patched`)
-    return
-  }
-
-  console.log(chalk.blueBright`[+] Patching server...`)
-  const patchedData = data.replace(/ALLOWED_ORIGINS=\w\.IS_PROD_BUILD/g, 'ALLOWED_ORIGINS=false')
-
-  if (data === patchedData) {
-    console.error(chalk.redBright`[-] Patch failed`)
-    process.exit(1)
-  }
-
-  fs.writeFileSync(`${filePath}.bak`, data, 'utf-8')
-  fs.writeFileSync(filePath, patchedData, 'utf-8')
-
-  console.log(chalk.greenBright`[+] Server patched`)
-}
 
 const patchApp = async () => {
   const filePath = path.join(appPath, 'resources', 'app.asar')
@@ -84,6 +47,8 @@ const patchApp = async () => {
       console.error(chalk.redBright`[-] Permission denied, try running with sudo`)
       process.exit(1)
     }
+    console.error(chalk.redBright`[-] An error occurred while extracting app`, e)
+    process.exit(1)
   }
 
   const indexPath = path.join(tempPath, 'build', 'index.js')
@@ -94,6 +59,10 @@ const patchApp = async () => {
     message: 'Enter a email for the pro plan',
     validate: value => value.includes('@') || 'Invalid email'
   })
+  if (!email) {
+    console.error(chalk.redBright`[-] Email not provided`)
+    process.exit(1)
+  }
   const patch = fs.readFileSync('patch.js', 'utf-8')
   const patchedData = data
     .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Patcher -------\nconst email = \`${email.replaceAll('`', '\\`')}\`\n${patch}\n// ------- End patched content -------\nconst APP_URL =`)
@@ -110,23 +79,16 @@ const patchApp = async () => {
   fs.copyFileSync(filePath, `${filePath}.bak`)
   console.log(chalk.blueBright`[+] Building app...`)
   await asar.createPackage(tempPath, filePath)
+  fs.rmSync(tempPath, { recursive: true, force: true })
   console.log(chalk.greenBright`[+] App patched`)
 }
 
 switch (argv._[0]) {
   case 'patch':
     await patchApp()
-    patchServer()
     break
   case 'restore':
     try {
-      console.log(chalk.blueBright`[+] Restoring server...`)
-      if (!fs.existsSync(path.join(serverPath, 'bundle', 'index.js.bak')))
-        console.error(chalk.redBright`[-] Server not patched or restore file not found`)
-      else {
-        fs.copyFileSync(path.join(serverPath, 'bundle', 'index.js.bak'), path.join(serverPath, 'bundle', 'index.js'))
-        console.log(chalk.greenBright`[+] Server restored`)
-      }
       console.log(chalk.blueBright`[+] Restoring app...`)
       if (!fs.existsSync(path.join(appPath, 'resources', 'app.asar.bak')))
         console.error(chalk.redBright`[-] App not patched or restore file not found`)

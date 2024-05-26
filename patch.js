@@ -1,4 +1,5 @@
 const axios = require('axios').default
+const electron = require('electron')
 const hasInternet = () => axios.head('https://www.google.com').then(() => true).catch(() => false)
 const port = process.env.PORT || 5067
 const tempPath = path.join(os.tmpdir(), 'httptoolkit-patch')
@@ -6,6 +7,8 @@ console.log(`[Patcher] Selected temp path: ${tempPath}`)
 process.env.APP_URL = `http://localhost:${port}`
 const express = require('express')
 const app = express()
+
+app.disable('x-powered-by')
 
 app.all('*', async (req, res) => {
   console.log(`[Patcher] Request to: ${req.url}`)
@@ -76,6 +79,7 @@ app.all('*', async (req, res) => {
     }
     require('fs').writeFileSync(filePath, data)
     console.log(`[Patcher] File downloaded and saved: ${filePath}`)
+    for (const [key, value] of Object.entries(remoteFile.headers)) res.setHeader(key, value)
     res.sendFile(filePath)
   } catch (e) {
     console.error(`[Patcher] Error while fetching file: ${filePath}`, e)
@@ -84,3 +88,19 @@ app.all('*', async (req, res) => {
 })
 
 app.listen(port, () => console.log(`[Patcher] Server listening on port ${port}`))
+
+electron.app.on('ready', () => {
+  //? Patching CORS headers to allow requests from localhost
+  electron.session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    //* Blocking unwanted requests to prevent tracking
+    const blockedHosts = ['events.httptoolkit.tech']
+    if (blockedHosts.includes(new URL(details.url).hostname) || details.url.includes('sentry')) return callback({ cancel: true })
+    details.requestHeaders.Origin = 'https://app.httptoolkit.tech'
+    callback({ requestHeaders: details.requestHeaders })
+  })
+  electron.session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    details.responseHeaders['Access-Control-Allow-Origin'] = [`http://localhost:${port}`]
+    delete details.responseHeaders['access-control-allow-origin']
+    callback({ responseHeaders: details.responseHeaders })
+  })
+})
