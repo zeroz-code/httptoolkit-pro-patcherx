@@ -20,10 +20,18 @@ const argv = await yargs(process.argv.slice(2))
 const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 
-const appPath =
-  isWin ? path.join(process.env.LOCALAPPDATA || '', 'Programs', 'httptoolkit', 'resources')
-  : isMac ? '/Applications/HTTP Toolkit.app/Contents/Resources'
-  : '/opt/HTTP Toolkit/resources'
+const appPath = isWin
+  ? path.join(
+      process.env.LOCALAPPDATA || "",
+      "Programs",
+      "httptoolkit",
+      "resources",
+    )
+  : isMac
+    ? "/Applications/HTTP Toolkit.app/Contents/Resources"
+    : fs.existsSync("/opt/HTTP Toolkit/resources")
+      ? "/opt/HTTP Toolkit/resources"
+      : "/opt/httptoolkit/resources";
 
 const isSudo = !isWin && (process.getuid || (() => process.env.SUDO_UID ? 0 : null))() === 0
 
