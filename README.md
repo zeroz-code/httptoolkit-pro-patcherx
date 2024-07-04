@@ -51,6 +51,6 @@ This project is for educational purposes only. I do not condone piracy or any il
 
 ## Credits
 
-- [HTTP Toolkit](https://httptoolkit.tech) for the awesome app
+- [HTTP Toolkit](https://httptoolkit.com) for the awesome app
 - [Titoot](https://github.com/Titoot) for the creating the [httptoolkit-interceptor](https://github.com/Titoot/httptoolkit-interceptor)
 - [XielQ](https://github.com/XielQs) for the creator of this patcher

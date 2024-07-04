@@ -20,18 +20,11 @@ const argv = await yargs(process.argv.slice(2))
 const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 
-const appPath = isWin
-  ? path.join(
-      process.env.LOCALAPPDATA || "",
-      "Programs",
-      "httptoolkit",
-      "resources",
-    )
-  : isMac
-    ? "/Applications/HTTP Toolkit.app/Contents/Resources"
-    : fs.existsSync("/opt/HTTP Toolkit/resources")
-      ? "/opt/HTTP Toolkit/resources"
-      : "/opt/httptoolkit/resources";
+const appPath =
+  isWin ? path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'httptoolkit', 'resources')
+  : isMac ? '/Applications/HTTP Toolkit.app/Contents/Resources'
+  : fs.existsSync('/opt/HTTP Toolkit/resources') ? '/opt/HTTP Toolkit/resources'
+  : '/opt/httptoolkit/resources'
 
 const isSudo = !isWin && (process.getuid || (() => process.env.SUDO_UID ? 0 : null))() === 0
 
@@ -93,14 +86,14 @@ const patchApp = async () => {
     message: 'Enter a email for the pro plan',
     validate: value => value.includes('@') || 'Invalid email'
   })
-  if (!email) {
+  if (!email || typeof email !== 'string') {
     console.error(chalk.redBright`[-] Email not provided`)
     process.exit(1)
   }
   ;['SIGINT', 'SIGTERM'].forEach(signal => process.on(signal, cleanUp))
   const patch = fs.readFileSync('patch.js', 'utf-8')
   const patchedData = data
-    .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Patcher -------\nconst email = \`${email.replaceAll('`', '\\`')}\`\n${patch}\n// ------- End patched content -------\nconst APP_URL =`)
+    .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Patcher -------\nconst email = \`${email.replace(/`/g, '\\`')}\`\n${patch}\n// ------- End patched content -------\nconst APP_URL =`)
 
   if (data === patchedData || !patchedData) {
     console.error(chalk.redBright`[-] Patch failed`)
