@@ -15,6 +15,13 @@ That's it! The app should now have the Pro features enabled.
 
 **Note**: This tool only works with the latest version of the app. If the app is updated, you will need to run the patcher again.
 
+## Using with Proxy
+
+If you want to add a proxy to the patcher, you can set the `PROXY` environment variable. For example, `PROXY=http://x.x.x.x:8080 node . patch` or `PROXY=http://x.x.x.x:8080 node . start`.
+
+**Note**: The proxy must be an HTTPS/HTTP proxy. SOCKS proxies are not supported.
+**Note**: `PROXY` is only used for the patcher. The app itself will not use the proxy.
+
 ## How it works
 
 This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy to intercept and download HTTP Toolkit app files ([app.httptoolkit.tech](https://app.httptoolkit.tech)) and patches the `main.js` file to enable the Pro features. For more information, see the [patch's source code](patch.js) or the [patcher](index.js) file.
@@ -36,6 +43,7 @@ This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy
 ## Known Issues
 
 - **Linux**: Try using `sudo` if you get permission errors
+- If you get an error like `No internet connection and file is not cached`, it means the patcher is unable to connect to the internet. Make sure you have an active internet connection and try again. If you are using a proxy, make sure proxy is working well.
 
 ## Screenshot
 

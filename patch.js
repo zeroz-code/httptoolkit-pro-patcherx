@@ -1,10 +1,13 @@
+const { HttpsProxyAgent } = require('https-proxy-agent')
 const electron = require('electron')
 const express = require('express')
 const https = require('https')
 const fs = require('fs')
 
 const request = (method, url, redirectCount = 0) => new Promise((resolve, reject) => {
-  const req = https.request(url, { method }, res => {
+  const agent = globalProxy ? new HttpsProxyAgent(globalProxy.startsWith('http') ? globalProxy.replace(/^http:/, 'https:') : 'https://' + globalProxy) : undefined //? Use proxy if set (globalProxy is injected by the patcher)
+
+  const req = https.request(url, { method, agent }, res => {
     let data = Buffer.alloc(0)
 
     res.on('data', chunk => data = Buffer.concat([data, chunk]))
@@ -31,7 +34,7 @@ const request = (method, url, redirectCount = 0) => new Promise((resolve, reject
   req.end()
 })
 
-const hasInternet = () => request('HEAD', 'https://www.google.com').then(r => r.statusCode >= 200 && r.statusCode < 400).catch(() => false)
+const hasInternet = () => request('HEAD', 'https://app.httptoolkit.tech').then(r => r.statusCode >= 200 && r.statusCode < 400).catch(() => false)
 
 const port = process.env.PORT || 5067
 const tempPath = path.join(os.tmpdir(), 'httptoolkit-patch')
@@ -66,7 +69,7 @@ app.all('*', async (req, res) => {
       res.sendFile(filePath)
     } else {
       console.log(`[Patcher] File not found in temp path: ${filePath}`)
-      res.status(404).send('Not found')
+      res.status(404).send('No internet connection and file is not cached')
     }
     return
   }
@@ -115,7 +118,7 @@ app.all('*', async (req, res) => {
         if (patched === data) console.error(`[Patcher] [ERR] Patch failed`)
         else {
           patched = `const user=${JSON.stringify({
-            email,
+            email, //? Injected by the patcher
             subscription: {
               status: 'active',
               expiry: new Date('9999-12-31').toISOString(),

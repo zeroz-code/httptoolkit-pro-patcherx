@@ -49,13 +49,23 @@ const cleanUp = () => {
 const patchApp = async () => {
   const filePath = path.join(appPath, 'app.asar')
   const tempPath = path.join(appPath, 'app')
-
+  
   if (fs.readFileSync(filePath).includes('Injected by HTTP Toolkit Patcher')) {
     console.log(chalk.greenBright`[+] App already patched`)
     return
   }
 
+  const globalProxy = process.env.PROXY
+
   console.log(chalk.blueBright`[+] Started patching app...`)
+
+  if (globalProxy) {
+    if (!globalProxy.match(/^https?:/)) {
+      console.error(chalk.redBright`[-] Global proxy must start with http:// or https://`)
+      process.exit(1)
+    }
+    console.log(chalk.yellowBright`[+] Adding a custom proxy: {bold ${globalProxy}}`)
+  }
 
   console.log(chalk.yellowBright`[+] Extracting app...`)
 
@@ -76,7 +86,7 @@ const patchApp = async () => {
   const indexPath = path.join(tempPath, 'build', 'index.js')
   if (!fs.existsSync(indexPath)) {
     console.error(chalk.redBright`[-] Index file not found`)
-    process.exit(1)
+    cleanUp()
   }
   const data = fs.readFileSync(indexPath, 'utf-8')
   ;['SIGINT', 'SIGTERM'].forEach(signal => process.off(signal, cleanUp))
@@ -88,26 +98,26 @@ const patchApp = async () => {
   })
   if (!email || typeof email !== 'string') {
     console.error(chalk.redBright`[-] Email not provided`)
-    process.exit(1)
+    cleanUp()
   }
   ;['SIGINT', 'SIGTERM'].forEach(signal => process.on(signal, cleanUp))
   const patch = fs.readFileSync('patch.js', 'utf-8')
   const patchedData = data
-    .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Patcher -------\nconst email = \`${email.replace(/`/g, '\\`')}\`\n${patch}\n// ------- End patched content -------\nconst APP_URL =`)
+    .replace('const APP_URL =', `// ------- Injected by HTTP Toolkit Patcher -------\nconst email = \`${email.replace(/`/g, '\\`')}\`\nconst globalProxy = process.env.PROXY ?? \`${globalProxy ? globalProxy.replace(/`/g, '\\`') : ''}\`\n${patch}\n// ------- End patched content -------\nconst APP_URL =`)
 
   if (data === patchedData || !patchedData) {
     console.error(chalk.redBright`[-] Patch failed`)
-    process.exit(1)
+    cleanUp()
   }
 
   fs.writeFileSync(indexPath, patchedData, 'utf-8')
   console.log(chalk.greenBright`[+] Patched index.js`)
   console.log(chalk.yellowBright`[+] Installing dependencies...`)
   try {
-    execSync('npm install express', { cwd: tempPath, stdio: 'inherit' })
+    execSync('npm install express https-proxy-agent', { cwd: tempPath, stdio: 'inherit' })
   } catch (e) {
     console.error(chalk.redBright`[-] An error occurred while installing dependencies`, e)
-    process.exit(1)
+    cleanUp()
   }
   fs.rmSync(path.join(tempPath, 'package-lock.json'), { force: true })
   fs.copyFileSync(filePath, `${filePath}.bak`)
