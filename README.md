@@ -32,7 +32,7 @@ This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy
 
 ## Requirements
 
-- [Node.js](https://nodejs.org) (v14 or higher)
+- [Node.js](https://nodejs.org) (v15 or higher) (with npm 7 at least)
 
 ## Compatibility
 
@@ -44,6 +44,7 @@ This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy
 
 - **Linux**: Try using `sudo` if you get permission errors
 - If you get an error like `No internet connection and file is not cached`, it means the patcher is unable to connect to the internet. Make sure you have an active internet connection and try again. If you are using a proxy, make sure proxy is working well.
+- If HTTP Toolkit does not start after patching, try updating your Node.js version to the latest version.
 
 ## Screenshot
 

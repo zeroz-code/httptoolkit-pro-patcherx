@@ -1,5 +1,5 @@
 // @ts-check
-import { execSync } from 'child_process'
+import { spawn } from 'child_process'
 import asar from '@electron/asar'
 import prompts from 'prompts'
 import yargs from 'yargs'
@@ -28,6 +28,10 @@ const appPath =
 
 const isSudo = !isWin && (process.getuid || (() => process.env.SUDO_UID ? 0 : null))() === 0
 
+if (+(process.versions.node.split('.')[0]) < 15) {
+  console.error(chalk.redBright`[!] Node.js version 15 or higher is recommended, you are using version {bold ${process.versions.node}}`)
+}
+
 if (!fs.existsSync(path.join(appPath, 'app.asar'))) {
   console.error(chalk.redBright`[-] HTTP Toolkit not found`)
   process.exit(1)
@@ -35,11 +39,42 @@ if (!fs.existsSync(path.join(appPath, 'app.asar'))) {
 
 console.log(chalk.blueBright`[+] HTTP Toolkit found at {bold ${path.dirname(appPath)}}`)
 
-const cleanUp = () => {
+const rm = dirPath => {
+  if (!fs.existsSync(dirPath)) return
+  if (!fs.lstatSync(dirPath).isDirectory()) return fs.rmSync(dirPath, { force: true })
+  for (const entry of fs.readdirSync(dirPath)) {
+    const entryPath = path.join(dirPath, entry)
+    if (fs.lstatSync(entryPath).isDirectory()) rm(entryPath)
+    else fs.rmSync(entryPath, { force: true })
+  }
+}
+
+/** @type {Array<import('child_process').ChildProcess>} */
+const activeProcesses = []
+let isCancelled = false
+
+const cleanUp = async () => {
+  isCancelled = true
   console.log(chalk.redBright`[-] Operation cancelled, cleaning up...`)
+  if (activeProcesses.length) {
+    console.log(chalk.yellowBright`[+] Killing active processes...`)
+    for (const proc of activeProcesses) {
+      proc.kill('SIGINT')
+      console.log(chalk.yellowBright`[+] Process {bold ${proc.pid ? process.pid + ' ' : ''}}killed`)
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  }
+  const paths = [
+    path.resolve(os.tmpdir(), 'httptoolkit-patch'),
+    path.resolve(appPath, 'app')
+  ]
   try {
-    fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-patch'), { recursive: true, force: true })
-    fs.rmSync(path.join(appPath, 'app'), { recursive: true, force: true })
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        console.log(chalk.yellowBright`[+] Removing {bold ${p}}`)
+        rm(p)
+      }
+    }
   } catch (e) {
     console.error(chalk.redBright`[-] An error occurred while cleaning up`, e)
   }
@@ -72,7 +107,7 @@ const patchApp = async () => {
   ;['SIGINT', 'SIGTERM'].forEach(signal => process.on(signal, cleanUp))
 
   try {
-    if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { recursive: true, force: true })
+    rm(tempPath)
     asar.extractAll(filePath, tempPath)
   } catch (e) {
     if (!isSudo && e.errno === -13) { //? Permission denied
@@ -114,17 +149,23 @@ const patchApp = async () => {
   console.log(chalk.greenBright`[+] Patched index.js`)
   console.log(chalk.yellowBright`[+] Installing dependencies...`)
   try {
-    execSync('npm install express https-proxy-agent', { cwd: tempPath, stdio: 'inherit' })
+    const proc = spawn('npm install express', { cwd: tempPath, stdio: 'inherit', shell: true })
+    activeProcesses.push(proc)
+    await new Promise(resolve =>
+      proc.on('close', resolve)
+    )
+    activeProcesses.splice(activeProcesses.indexOf(proc), 1)
+    if (isCancelled) return
   } catch (e) {
     console.error(chalk.redBright`[-] An error occurred while installing dependencies`, e)
     cleanUp()
   }
-  fs.rmSync(path.join(tempPath, 'package-lock.json'), { force: true })
+  rm(path.join(tempPath, 'package-lock.json'))
   fs.copyFileSync(filePath, `${filePath}.bak`)
   console.log(chalk.greenBright`[+] Backup created at {bold ${filePath}.bak}`)
   console.log(chalk.yellowBright`[+] Building app...`)
   await asar.createPackage(tempPath, filePath)
-  fs.rmSync(tempPath, { recursive: true, force: true })
+  rm(tempPath)
   console.log(chalk.greenBright`[+] App patched`)
 }
 
@@ -141,7 +182,7 @@ switch (argv._[0]) {
         fs.copyFileSync(path.join(appPath, 'app.asar.bak'), path.join(appPath, 'app.asar'))
         console.log(chalk.greenBright`[+] App restored`)
       }
-      fs.rmSync(path.join(os.tmpdir(), 'httptoolkit-patch'), { recursive: true, force: true })
+      rm(path.join(os.tmpdir(), 'httptoolkit-patch'))
     } catch (e) {
       if (!isSudo && e.errno === -13) { //? Permission denied
         console.error(chalk.redBright`[-] Permission denied${!isWin ? ', try running with sudo' : ', try running node as administrator'}`)
@@ -154,7 +195,12 @@ switch (argv._[0]) {
   case 'start':
     console.log(chalk.blueBright`[+] Starting HTTP Toolkit...`)
     try {
-      execSync(isWin ? `start "" "${path.resolve(appPath, '..', 'HTTP Toolkit.exe')}"` : isMac ? 'open -a "HTTP Toolkit"' : 'httptoolkit', { stdio: 'inherit' })
+      const command =
+        isWin ? `"${path.resolve(appPath, '..', 'HTTP Toolkit.exe')}"`
+        : isMac ? 'open -a "HTTP Toolkit"'
+        : 'httptoolkit'
+      const proc = spawn(command, { stdio: 'inherit', shell: true })
+      proc.on('close', code => process.exit(code))
     } catch (e) {
       console.error(chalk.redBright`[-] An error occurred`, e)
       if (isSudo) console.error(chalk.redBright`[-] Try running without sudo`)
@@ -166,4 +212,4 @@ switch (argv._[0]) {
     process.exit(1)
 }
 
-console.log(chalk.greenBright`[+] Done`)
+if (!isCancelled) console.log(chalk.greenBright`[+] Done`)
