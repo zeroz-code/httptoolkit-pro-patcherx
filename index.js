@@ -9,31 +9,48 @@ import fs from 'fs'
 import os from 'os'
 
 const argv = await yargs(process.argv.slice(2))
-  .usage(`Usage: ${process.argv0} . <command> [options]`)
+  .usage(`Usage: ${path.basename(process.argv0, '.exe')} . <command> [options]`)
   .command('patch', 'Patch HTTP Toolkit using the specified script')
+  .option('proxy', {
+    alias: 'p',
+    describe: 'Set a proxy for the app (only http/https supported)',
+    type: 'string'
+  })
+  .option('path', {
+    alias: 'P',
+    describe: 'Specify the path to the HTTP Toolkit app (auto-detected by default)',
+    type: 'string'
+  })
   .command('restore', 'Restore HTTP Toolkit files to their original state')
   .command('start', 'Start HTTP Toolkit')
   .demandCommand(1, 'You need at least one command before moving on')
   .alias('h', 'help')
   .parse()
 
+const globalProxy = argv.proxy
+
 const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 
-const appPath =
-  isWin ? path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'httptoolkit', 'resources')
-  : isMac ? '/Applications/HTTP Toolkit.app/Contents/Resources'
-  : fs.existsSync('/opt/HTTP Toolkit/resources') ? '/opt/HTTP Toolkit/resources'
-  : '/opt/httptoolkit/resources'
+//* why is there so many different paths, god damn
+const getAppPath = () => {
+  if (argv.path) return argv.path.endsWith(isMac ? '/Resources' : '/resources') ? argv.path : path.join(argv.path, isMac ? '/Resources' : '/resources')
+  if (isWin) return path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'httptoolkit', 'resources')
+  if (isMac) return '/Applications/HTTP Toolkit.app/Contents/Resources'
+  if (fs.existsSync('/opt/HTTP Toolkit/resources')) return '/opt/HTTP Toolkit/resources'
+  return '/opt/httptoolkit/resources'
+}
+
+const appPath = getAppPath()
 
 const isSudo = !isWin && (process.getuid || (() => process.env.SUDO_UID ? 0 : null))() === 0
 
 if (+(process.versions.node.split('.')[0]) < 15) {
-  console.error(chalk.redBright`[!] Node.js version 15 or higher is recommended, you are using version {bold ${process.versions.node}}`)
+  console.error(chalk.redBright`[!] Node.js version 15 or higher is recommended, you are currently using version {bold ${process.versions.node}}`)
 }
 
 if (!fs.existsSync(path.join(appPath, 'app.asar'))) {
-  console.error(chalk.redBright`[-] HTTP Toolkit not found`)
+  console.error(chalk.redBright`[-] HTTP Toolkit not found${!argv.path ? ', try specifying the path with --path' : ''}`)
   process.exit(1)
 }
 
@@ -65,8 +82,8 @@ const cleanUp = async () => {
     await new Promise(resolve => setTimeout(resolve, 1000))
   }
   const paths = [
-    path.resolve(os.tmpdir(), 'httptoolkit-patch'),
-    path.resolve(appPath, 'app')
+    path.join(os.tmpdir(), 'httptoolkit-patch'),
+    path.join(appPath, 'app')
   ]
   try {
     for (const p of paths) {
@@ -89,8 +106,6 @@ const patchApp = async () => {
     console.log(chalk.greenBright`[+] App already patched`)
     return
   }
-
-  const globalProxy = process.env.PROXY
 
   console.log(chalk.blueBright`[+] Started patching app...`)
 

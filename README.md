@@ -15,12 +15,34 @@ That's it! The app should now have the Pro features enabled.
 
 **Note**: This tool only works with the latest version of the app. If the app is updated, you will need to run the patcher again.
 
+## CLI Usage
+
+```sh
+Usage: node . <command> [options]
+
+Commands:
+  patch    Patch HTTP Toolkit using the specified script
+  restore  Restore HTTP Toolkit files to their original state
+  start    Start HTTP Toolkit
+
+Options:
+      --version  Show version number                                   [boolean]
+  -p, --proxy    Set a proxy for the app (only http/https supported)    [string]
+  -P, --path     Specify the path to the HTTP Toolkit app (auto-detected by defa
+                 ult)                                                   [string]
+  -h, --help     Show help                                             [boolean]
+
+You need at least one command before moving on
+```
+
 ## Using with Proxy
 
-If you want to add a proxy to the patcher, you can set the `PROXY` environment variable. For example, `PROXY=http://x.x.x.x:8080 node . patch` or `PROXY=http://x.x.x.x:8080 node . start`.
+If you want to add a proxy to the patcher, you can set the use the `--proxy` option. For example, `node . patch --proxy http://x.x.x.x:8080`.
 
 **Note**: The proxy must be an HTTPS/HTTP proxy. SOCKS proxies are not supported.
-**Note**: `PROXY` is only used for the patcher. The app itself will not use the proxy.
+**Note**: `Proxy` is only used for the patcher. The app itself will not use the proxy, so you will need to configure the app to use the proxy if you want to use it.
+
+![App Proxy Settings](https://i.imgur.com/Ti2vIgb.png)
 
 ## How it works
 
@@ -49,7 +71,8 @@ This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy
 
 ## Screenshot
 
-![Screenshot](https://i.imgur.com/keYK7zR.png)
+![Screenshot](https://i.imgur.com/eAmDmZF.png)
+<small>Background: [Doki Theme](https://github.com/doki-theme/doki-theme-vscode)</small>
 
 ## License
 
@@ -64,3 +87,9 @@ This project is for educational purposes only. I do not condone piracy or any il
 - [HTTP Toolkit](https://httptoolkit.com) for the awesome app
 - [Titoot](https://github.com/Titoot) for the creating the [httptoolkit-interceptor](https://github.com/Titoot/httptoolkit-interceptor)
 - [XielQ](https://github.com/XielQs) for the creator of this patcher
+
+## ⭐️ Show Your Support
+
+If you found this project helpful or interesting, please give it a star! 🌟
+
+[![Star History Chart](https://api.star-history.com/svg?repos=XielQs/httptoolkit-pro-patcher&type=Date)](https://star-history.com/#XielQs/httptoolkit-pro-patcher&Date)
