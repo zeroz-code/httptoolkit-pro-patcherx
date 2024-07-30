@@ -1,19 +1,19 @@
 <h1 align="center">HTTP Toolkit Pro Patcher</h1>
 
-This is a simple tool to patch the HTTP Toolkit Pro app to enable the Pro features without a license or subscription. **But please consider supporting the developer by purchasing a license if you find the HTTP Toolkit useful.**
+This is a simple tool to patch HTTP Toolkit to enable the Pro features without a license or subscription. **But please consider supporting the developer by purchasing a license if you find the HTTP Toolkit useful.**
 
 ## Usage
 
 1. Clone this repository using `git clone https://github.com/XielQs/httptoolkit-pro-patcher.git`
 2. cd into the directory using `cd httptoolkit-pro-patcher`
 3. Run `npm install` or whatever package manager you use
-4. Run `node . patch` to patch the app
+4. Run `node . patch` to patch the HTTP Toolkit
 
-That's it! The app should now have the Pro features enabled.
+That's it! The HTTP Toolkit should now have the Pro features enabled.
 
-***Tip**: You can also run `node . restore` to restore the original app.*
+***Tip**: You can also run `node . restore` to restore the original HTTP Toolkit.*
 
-**Note**: This tool only works with the latest version of the app. If the app is updated, you will need to run the patcher again.
+**Note**: You may need to run the patcher again after updating the HTTP Toolkit.
 
 ## CLI Usage
 
@@ -21,16 +21,16 @@ That's it! The app should now have the Pro features enabled.
 Usage: node . <command> [options]
 
 Commands:
-  patch    Patch HTTP Toolkit using the specified script
-  restore  Restore HTTP Toolkit files to their original state
-  start    Start HTTP Toolkit
+  patch    Patch HTTP Toolkit
+  restore  Restore HTTP Toolkit
+  start    Start HTTP Toolkit with debug logs enabled
 
 Options:
       --version  Show version number                                   [boolean]
-  -p, --proxy    Set a proxy for the app (only http/https supported)    [string]
-  -P, --path     Specify the path to the HTTP Toolkit app (auto-detected by defa
-                 ult)                                                   [string]
-  -h, --help     Show help                                             [boolean]
+  -p, --proxy    Specify a global proxy (only http/https supported)     [string]
+  -P, --path     Specify the path to the HTTP Toolkit folder (auto-detected by d
+                 efault)                                                [string]
+  -h, --help     Show this help message                                [boolean]
 
 You need at least one command before moving on
 ```
@@ -39,18 +39,21 @@ You need at least one command before moving on
 
 If you want to add a proxy to the patcher, you can set the use the `--proxy` option. For example, `node . patch --proxy http://x.x.x.x:8080`.
 
-**Note**: The proxy must be an HTTPS/HTTP proxy. SOCKS proxies are not supported.
-**Note**: `Proxy` is only used for the patcher. The app itself will not use the proxy, so you will need to configure the app to use the proxy if you want to use it.
+You can also set the `PROXY` environment variable to use a proxy. For example, `PROXY=http://x.x.x.x:8080 node . start`.
 
-![App Proxy Settings](https://i.imgur.com/Ti2vIgb.png)
+**Note**: The proxy must be an HTTPS/HTTP proxy. SOCKS proxies are not supported.
+
+**Note**: `Proxy` is only used for the patcher. The HTTP Toolkit itself will not use the proxy, so you will need to configure the HTTP Toolkit to use the proxy if you want to use it.
+
+![HTTP Toolkit Proxy Settings](https://i.imgur.com/Ti2vIgb.png)
 
 ## How it works
 
-This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy to intercept and download HTTP Toolkit app files ([app.httptoolkit.tech](https://app.httptoolkit.tech)) and patches the `main.js` file to enable the Pro features. For more information, see the [patch's source code](patch.js) or the [patcher](index.js) file.
+This tool simply creates a server *(at port 5067)* and acts as like a MITM proxy to intercept and download app files ([app.httptoolkit.tech](https://app.httptoolkit.tech)) and patches the `main.js` file to enable the Pro features. For more detailed information, see the [patch's source code](patch.js) or the [patcher](index.js) file.
 
 ***Tip**: You can also change the `PORT` environment variable to use a different port. For example, `PORT=8080 httptoolkit` or `PORT=8080 node . start`.*
 
-**Note**: This tool does not modify the original app files. It only intercepts and modifies the files in memory (and saves the modified files to cache).
+**Note**: This tool does not modify the HTTP Toolkit files. It only intercepts and modifies the files in memory (and saves the modified files to cache).
 
 ## Requirements
 

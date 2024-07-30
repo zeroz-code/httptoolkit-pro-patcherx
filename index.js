@@ -10,21 +10,22 @@ import os from 'os'
 
 const argv = await yargs(process.argv.slice(2))
   .usage(`Usage: ${path.basename(process.argv0, '.exe')} . <command> [options]`)
-  .command('patch', 'Patch HTTP Toolkit using the specified script')
+  .command('patch', 'Patch HTTP Toolkit')
   .option('proxy', {
     alias: 'p',
-    describe: 'Set a proxy for the app (only http/https supported)',
+    describe: 'Specify a global proxy (only http/https supported)',
     type: 'string'
   })
   .option('path', {
     alias: 'P',
-    describe: 'Specify the path to the HTTP Toolkit app (auto-detected by default)',
+    describe: 'Specify the path to the HTTP Toolkit folder (auto-detected by default)',
     type: 'string'
   })
-  .command('restore', 'Restore HTTP Toolkit files to their original state')
-  .command('start', 'Start HTTP Toolkit')
+  .command('restore', 'Restore HTTP Toolkit')
+  .command('start', 'Start HTTP Toolkit with debug logs enabled')
   .demandCommand(1, 'You need at least one command before moving on')
   .alias('h', 'help')
+  .describe('help', 'Show this help message')
   .parse()
 
 const globalProxy = argv.proxy
@@ -56,7 +57,7 @@ if (!fs.existsSync(path.join(appPath, 'app.asar'))) {
 
 console.log(chalk.blueBright`[+] HTTP Toolkit found at {bold ${path.dirname(appPath)}}`)
 
-const rm = dirPath => {
+const rm = (/** @type {string} */ dirPath) => {
   if (!fs.existsSync(dirPath)) return
   if (!fs.lstatSync(dirPath).isDirectory()) return fs.rmSync(dirPath, { force: true })
   for (const entry of fs.readdirSync(dirPath)) {
@@ -101,9 +102,9 @@ const cleanUp = async () => {
 const patchApp = async () => {
   const filePath = path.join(appPath, 'app.asar')
   const tempPath = path.join(appPath, 'app')
-  
+
   if (fs.readFileSync(filePath).includes('Injected by HTTP Toolkit Patcher')) {
-    console.log(chalk.greenBright`[+] App already patched`)
+    console.log(chalk.yellowBright`[!] HTTP Toolkit already patched`)
     return
   }
 
@@ -136,7 +137,7 @@ const patchApp = async () => {
   const indexPath = path.join(tempPath, 'build', 'index.js')
   if (!fs.existsSync(indexPath)) {
     console.error(chalk.redBright`[-] Index file not found`)
-    cleanUp()
+    await cleanUp()
   }
   const data = fs.readFileSync(indexPath, 'utf-8')
   ;['SIGINT', 'SIGTERM'].forEach(signal => process.off(signal, cleanUp))
@@ -148,7 +149,7 @@ const patchApp = async () => {
   })
   if (!email || typeof email !== 'string') {
     console.error(chalk.redBright`[-] Email not provided`)
-    cleanUp()
+    await cleanUp()
   }
   ;['SIGINT', 'SIGTERM'].forEach(signal => process.on(signal, cleanUp))
   const patch = fs.readFileSync('patch.js', 'utf-8')
@@ -157,7 +158,7 @@ const patchApp = async () => {
 
   if (data === patchedData || !patchedData) {
     console.error(chalk.redBright`[-] Patch failed`)
-    cleanUp()
+    await cleanUp()
   }
 
   fs.writeFileSync(indexPath, patchedData, 'utf-8')
@@ -173,7 +174,7 @@ const patchApp = async () => {
     if (isCancelled) return
   } catch (e) {
     console.error(chalk.redBright`[-] An error occurred while installing dependencies`, e)
-    cleanUp()
+    await cleanUp()
   }
   rm(path.join(tempPath, 'package-lock.json'))
   fs.copyFileSync(filePath, `${filePath}.bak`)
@@ -181,7 +182,7 @@ const patchApp = async () => {
   console.log(chalk.yellowBright`[+] Building app...`)
   await asar.createPackage(tempPath, filePath)
   rm(tempPath)
-  console.log(chalk.greenBright`[+] App patched`)
+  console.log(chalk.greenBright`[+] HTTP Toolkit patched successfully`)
 }
 
 switch (argv._[0]) {
@@ -190,12 +191,12 @@ switch (argv._[0]) {
     break
   case 'restore':
     try {
-      console.log(chalk.blueBright`[+] Restoring app...`)
+      console.log(chalk.blueBright`[+] Restoring HTTP Toolkit...`)
       if (!fs.existsSync(path.join(appPath, 'app.asar.bak')))
-        console.error(chalk.redBright`[-] App not patched or restore file not found`)
+        console.error(chalk.redBright`[-] HTTP Toolkit not patched or backup file not found`)
       else {
         fs.copyFileSync(path.join(appPath, 'app.asar.bak'), path.join(appPath, 'app.asar'))
-        console.log(chalk.greenBright`[+] App restored`)
+        console.log(chalk.greenBright`[+] HTTP Toolkit restored`)
       }
       rm(path.join(os.tmpdir(), 'httptoolkit-patch'))
     } catch (e) {
