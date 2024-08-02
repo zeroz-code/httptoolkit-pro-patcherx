@@ -156,3 +156,6 @@ electron.app.on('ready', () => {
     callback({ responseHeaders: details.responseHeaders })
   })
 })
+
+//? Disable caching for all requests
+electron.app.commandLine.appendSwitch('disable-http-cache')
