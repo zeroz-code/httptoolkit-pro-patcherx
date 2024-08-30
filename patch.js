@@ -107,8 +107,8 @@ app.all('*', async (req, res) => {
 
       data = data.toString()
 
-      const accStoreName = data.match(/class ([0-9A-Za-z_]+){constructor\(e\){this\.goToSettings=e/)?.[1]
-      const modName = data.match(/([0-9A-Za-z_]+).(getLatestUserData|getLastUserData)/)?.[1]
+      const accStoreName = data.match(/class ([0-9A-Za-z_$]+){constructor\(e\){this\.goToSettings=e/)?.[1]
+      const modName = data.match(/([0-9A-Za-z_$]+).(getLatestUserData|getLastUserData)/)?.[1]
 
       if (!accStoreName) console.error(`[Patcher] [ERR] Account store name not found in main.js`)
       else if (!modName) console.error(`[Patcher] [ERR] Module name not found in main.js`)
