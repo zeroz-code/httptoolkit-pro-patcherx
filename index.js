@@ -138,6 +138,7 @@ const patchApp = async () => {
 
   try {
     rm(tempPath)
+    fs.mkdirSync(tempPath)
     asar.extractAll(filePath, tempPath)
   } catch (e) {
     if (!isSudo && e.errno === -13) { //? Permission denied
