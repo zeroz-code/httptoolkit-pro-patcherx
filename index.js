@@ -149,7 +149,7 @@ const patchApp = async () => {
 
   try {
     rm(tempPath)
-    fs.rmSync(tempPath, { recursive: true })
+    if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { recursive: true })
     fs.mkdirSync(tempPath)
     asar.extractAll(filePath, tempPath)
   } catch (e) {
