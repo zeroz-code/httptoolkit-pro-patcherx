@@ -211,7 +211,7 @@ const patchApp = async () => {
   rm(tempPath)
   console.log(chalk.greenBright`[+] HTTP Toolkit patched successfully`)
   console.log(chalk.greenBright`[+] Restart HTTP Toolkit to apply changes`)
-  cleanUp(false)
+  await cleanUp(false)
 }
 
 switch (argv._[0]) {

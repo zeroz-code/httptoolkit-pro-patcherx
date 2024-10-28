@@ -42,7 +42,8 @@ app.all('*', async (req, res) => {
   }
 
   //? Prevent loading service worker to avoid caching issues
-  if (new URL(req.url, process.env.APP_URL).pathname === '/ui-update-worker.js') return res.status(404).send('Not found')
+  //! Commented out because it breaks the app (tf?? see #21)
+  // if (new URL(req.url, process.env.APP_URL).pathname === '/ui-update-worker.js') return res.status(404).send('Not found')
 
   if (!fs.existsSync(tempPath)) {
     console.log(`[Patcher] Temp path not found, creating: ${tempPath}`)
