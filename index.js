@@ -194,7 +194,7 @@ const patchApp = async () => {
   console.log(chalk.greenBright`[+] Patched index.js`)
   console.log(chalk.yellowBright`[+] Installing dependencies...`)
   try {
-    const proc = spawn('npm install express axios', { cwd: tempPath, stdio: 'inherit', shell: true })
+    const proc = spawn('npm install express axios got-scraping', { cwd: tempPath, stdio: 'inherit', shell: true })
     activeProcesses.push(proc)
     await new Promise(resolve =>
       proc.on('close', resolve)
